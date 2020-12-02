@@ -1,14 +1,36 @@
 ﻿using System;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 
-namespace ChatAppLib
+namespace ChatAppLib.models.communication
 {
+    [Serializable]
     public class Request
     {
-        
+        private object _body;
         private string _id;
         private string _type;
-        private object _body;
-        
+
+        public Request(string type)
+        {
+            _id = Guid.NewGuid().ToString("N");
+            _type = type;
+        }
+
+        public Request(string type, object body)
+        {
+            _id = Guid.NewGuid().ToString("N");
+            _type = type;
+            _body = body;
+        }
+
+        public Request(string id, string type, object body)
+        {
+            _id = id;
+            _type = type;
+            _body = body;
+        }
+
         public string Id
         {
             get => _id;
@@ -27,24 +49,28 @@ namespace ChatAppLib
             set => _body = value;
         }
 
-        public Request(string type)
+        public static byte[] Serialize(Request request)
         {
-            this._id = Guid.NewGuid().ToString("N");
-            this._type = type;
-        }
-        
-        public Request(string type, object body)
-        {
-            this._id = Guid.NewGuid().ToString("N");
-            this._type = type;
-            this._body = body;
+            using (var memoryStream = new MemoryStream())
+            {
+                new BinaryFormatter().Serialize(memoryStream, request);
+                return memoryStream.ToArray();
+            }
         }
 
-        public Request(string id, string type, object body)
+        public static Request Deserialize(byte[] message)
         {
-            this._id = id;
-            this._type = type;
-            this._body = body;
+            using (var memoryStream = new MemoryStream(message))
+            {
+                return (Request) new BinaryFormatter().Deserialize(memoryStream);
+            }
+        }
+
+        public override string ToString()
+        {
+            return $"Request n°{_id}: \n" +
+                   $"type: {_type}\n" +
+                   $"body: {_body}";
         }
     }
 }

@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <TargetFramework>netcoreapp3.1</TargetFramework>
-        <RootNamespace>ChatApp</RootNamespace>
+        <RootNamespace>ChatAppLib</RootNamespace>
     </PropertyGroup>
 
 </Project>

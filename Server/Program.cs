@@ -1,15 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Net.Sockets;
-
-namespace Server
+﻿namespace Server
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
-            Server server = new Server();
+            var server = new Server("server");
             server.Start();
         }
     }
