@@ -1,72 +1,75 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
-using ChatAppLib;
+using ChatAppLib.models;
+using ChatAppLib.models.communication;
+
 namespace Server
 {
     public class ClientManager
     {
-        private static int ID = 0;
-        private readonly int _remotePort;
-        private readonly User _user;
-        private State _state;
-        private readonly NetworkStream _stream;
-        private readonly TcpClient _client;
-
-        public event EventHandler<ClientManager> CloseConnectionEvent; 
-        
-        public int RemotePort => _remotePort;
-
-        public User User => _user;
-
-        public State State => _state;
-
-        public NetworkStream Stream => _stream;
-
-        public TcpClient Client => _client;
+        private static string _consoleName;
 
         public ClientManager(TcpClient client)
         {
-            _remotePort = ((IPEndPoint) client.Client.RemoteEndPoint).Port;
-            ID++;
-            _state = State.CONNECTED;
-            _client = client;
-            _stream = client.GetStream();
-            
-            
-            var clientThread = new Thread(Listen);
+            RemotePort = ((IPEndPoint) client.Client.RemoteEndPoint).Port;
+            _consoleName = $"client {RemotePort.ToString()} >";
+
+            State = State.CONNECTED;
+            Client = client;
+            Stream = client.GetStream();
+
+            Client.ReceiveBufferSize = 1024;
+
+            var clientThread = new Thread(ListenResponse);
             clientThread.Start();
         }
 
-        private void Listen()
+        public int RemotePort { get; }
+
+        public User User { get; }
+
+        public State State { get; private set; }
+
+        public NetworkStream Stream { get; }
+
+        public TcpClient Client { get; }
+
+        public event EventHandler<ClientManager> CloseConnectionEvent;
+
+        private void ListenResponse()
         {
-            var buffer = new byte[1024];
-            
-            Console.WriteLine("Start listen to client n°{0} request ...", _remotePort.ToString());
-            while (this._state != State.DISCONNECTED)
+            LogMessage("start listen to client request ...");
+            while (State != State.DISCONNECTED)
             {
-                Console.WriteLine("reading...");
+                LogMessage("reading...");
                 try
                 {
-                    var byteCount = _stream.Read(buffer, 0, buffer.Length);
-                    var formatted = new byte[byteCount];
-
-                    // if not byte read
-                    if (byteCount == 0) break;
-
-                    var data = Encoding.ASCII.GetString(buffer, 0, byteCount);
-                    Console.WriteLine(data);
+                    var formatter = new BinaryFormatter();
+                    var requestReceive = (Request) formatter.Deserialize(Stream);
+                    LogMessage(requestReceive);
                 }
-                catch (Exception ignored)
+                catch (SerializationException serializationException)
                 {
-                    Console.WriteLine("connection lost with the client {0}", _remotePort.ToString());
-                    _state = State.DISCONNECTED;
+                    LogMessage($"error during deserialization : {serializationException.Message}");
+                }
+                catch (Exception e)
+                {
+                    LogMessage("connection lost, removing client...");
+                    State = State.DISCONNECTED;
                     // invoke event to remove client manager from the list 
                     CloseConnectionEvent?.Invoke(this, this);
                 }
             }
+        }
+
+        private static void LogMessage(object message)
+        {
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine("{0} {1}", _consoleName, message);
         }
     }
 }
