@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net.Sockets;
 using ChatAppLib.models;
 using ChatAppLib.models.communication;
@@ -49,13 +50,13 @@ namespace Client
         {
             while (_state != State.DISCONNECTED)
             {
+                Console.Write("# ");
                 var inputReadLine = Console.ReadLine();
                 // send a request
                 var request = new Request(inputReadLine);
                 try
                 {
                     var serializeRequest = Request.Serialize(request);
-                    Console.WriteLine(serializeRequest.Length);
                     _stream.Write(serializeRequest, 0, serializeRequest.Length);
                     _stream.Flush();
                 }
@@ -64,6 +65,11 @@ namespace Client
                     Console.WriteLine("Error sending message {0} ", e.Message);
                 }
             }
+        }
+
+        private bool ValidateCommand(string command)
+        {
+            return true;
         }
     }
 }
