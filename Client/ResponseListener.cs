@@ -16,7 +16,7 @@ namespace Client
         {
             Console.WriteLine("response listener is listening in thread {0}", Thread.CurrentThread.Name);
             //Thread.Sleep(10000);
-            Close();
+            //Close();
         }
 
         private void Close()
