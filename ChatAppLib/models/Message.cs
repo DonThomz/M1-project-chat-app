@@ -2,19 +2,29 @@
 
 namespace ChatAppLib.models
 {
-    public class Message
+    [Serializable]
+    public abstract class Message
     {
-        public Message(string senderUsername, string receiverUsername)
+        private string _id;
+
+        private string _senderUsername;
+        private string _content;
+
+        public string Id => _id;
+        public string SenderUsername => _senderUsername;
+
+        public string Content
         {
-            Id = Guid.NewGuid().ToString("N");
-            Sender = senderUsername;
-            Receiver = receiverUsername;
+            get => _content;
+            set => _content = value;
         }
 
-        public string Id { get; set; }
-
-        public string Sender { get; set; }
-
-        public string Receiver { get; set; }
+        public Message(string senderUsername, string content)
+        {
+            _id = Guid.NewGuid().ToString("N");
+            _senderUsername = senderUsername;
+            _content = content;
+        }
+        
     }
 }

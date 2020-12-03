@@ -1,7 +1,10 @@
 ﻿using System;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace ChatAppLib.models.communication
 {
+    [Serializable]
     public class Response
     {
         public Response(int codeStatus, string type)
@@ -34,5 +37,22 @@ namespace ChatAppLib.models.communication
         public string Type { get; set; }
 
         public object Body { get; set; }
+        
+        public static byte[] Serialize(Response request)
+        {
+            using (var memoryStream = new MemoryStream())
+            {
+                new BinaryFormatter().Serialize(memoryStream, request);
+                return memoryStream.ToArray();
+            }
+        }
+
+        public static Response Deserialize(byte[] message)
+        {
+            using (var memoryStream = new MemoryStream(message))
+            {
+                return (Response) new BinaryFormatter().Deserialize(memoryStream);
+            }
+        }
     }
 }

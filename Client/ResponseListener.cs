@@ -1,27 +1,39 @@
 ﻿using System;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
+using ChatAppLib.models;
+using ChatAppLib.models.communication;
 
 namespace Client
 {
     public class ResponseListener
     {
-        public ResponseListener(string threadName)
+        private ClientManager _client;
+        
+        public event EventHandler<Response> ResponseEvent;
+
+        public ResponseListener(ClientManager client)
         {
-            var responseListenerThread = new Thread(Run);
+            _client = client;
+        }
+
+        public void Start(string threadName)
+        {
+            var responseListenerThread = new Thread(Listen);
             responseListenerThread.Name = threadName;
             responseListenerThread.Start();
         }
 
-        private void Run()
+        private void Listen()
         {
             Console.WriteLine("response listener is listening in thread {0}", Thread.CurrentThread.Name);
-            //Thread.Sleep(10000);
-            //Close();
-        }
-
-        private void Close()
-        {
-            Console.WriteLine("response listener is stopping in thread {0}", Thread.CurrentThread.Name);
+            while (_client.State == State.CONNECTED)
+            {
+                var formatter = new BinaryFormatter();
+                var response = (Response) formatter.Deserialize(_client.Stream);
+                // send the response in action event method by invoking 
+                ResponseEvent?.Invoke(this, response);
+            }
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace ChatAppLib.models
 {
+    [Serializable]
     public class Topic
     {
         public Topic(string title)
