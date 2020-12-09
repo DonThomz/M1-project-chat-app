@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using ChatAppLib.models;
@@ -8,14 +9,14 @@ namespace Client
 {
     public class ResponseListener
     {
-        private ClientManager _client;
-        
-        public event EventHandler<Response> ResponseEvent;
+        private readonly ClientManager _client;
 
         public ResponseListener(ClientManager client)
         {
             _client = client;
         }
+
+        public event EventHandler<Response> ResponseEvent;
 
         public void Start(string threadName)
         {
@@ -27,13 +28,19 @@ namespace Client
         private void Listen()
         {
             Console.WriteLine("response listener is listening in thread {0}", Thread.CurrentThread.Name);
+            var formatter = new BinaryFormatter();
             while (_client.State == State.CONNECTED)
-            {
-                var formatter = new BinaryFormatter();
-                var response = (Response) formatter.Deserialize(_client.Stream);
-                // send the response in action event method by invoking 
-                ResponseEvent?.Invoke(this, response);
-            }
+                try
+                {
+                    Thread.Sleep(300);
+                    var response = (Response) formatter.Deserialize(_client.Stream);
+                    // send the response in action event method by invoking 
+                    ResponseEvent?.Invoke(this, response);
+                }
+                catch (IOException)
+                {
+                    _client.Close();
+                }
         }
     }
 }

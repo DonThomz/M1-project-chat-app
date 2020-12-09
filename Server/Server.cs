@@ -10,7 +10,7 @@ namespace Server
     {
         private const int Port = 4000;
         private static string _consoleName;
-        public readonly static List<Receiver> Clients = new List<Receiver>();
+        public static readonly List<Receiver> Clients = new List<Receiver>();
         private bool _listening;
         private TcpListener _server;
 
@@ -50,11 +50,11 @@ namespace Server
                 // add method to remove client manager to the clients list
                 clientManager.CloseConnectionEvent += RemoveClient;
                 Clients.Add(clientManager);
-                
+
                 // Start the client managing in a thread
-                Thread clientThread = new Thread(clientManager.Start);
+                var clientThread = new Thread(clientManager.Start);
                 clientThread.Start();
-                
+
                 LogMessage($"{_consoleName} client connected ! {Clients.Count.ToString()} connected");
             }
         }

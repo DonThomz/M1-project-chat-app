@@ -1,26 +1,11 @@
-﻿using System.Collections.Generic;
-
-namespace ChatAppLib.models
+﻿namespace ChatAppLib.models.communication
 {
-    public class Command
+    public static class Command
     {
-        private readonly string _name;
-
-        public Command(string name)
-        {
-            _name = name;
-        }
-
-        public Command(string name, params KeyValuePair<string, string>[] requiredOptions)
-        {
-            _name = name;
-            RequiredOptions = new Dictionary<string, string>();
-            foreach (var requiredOption in requiredOptions)
-                RequiredOptions.Add(requiredOption.Key, requiredOption.Value);
-        }
-
-        public Dictionary<string, string> RequiredOptions { get; }
-
-        public Dictionary<string, string> Options { get; }
+        public const string PrivateMessage = "mp";
+        public const string PrivateMessageConfirm = "mp";
+        public const string JoinTopic = "join-topic";
+        public const string CreateTopic = "create-topic";
+        public const string ListTopics = "list-topics";
     }
 }

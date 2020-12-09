@@ -6,6 +6,10 @@ namespace ChatAppLib.models
     [Serializable]
     public class Topic
     {
+        public Topic()
+        {
+        }
+
         public Topic(string title)
         {
             Id = Guid.NewGuid().ToString("N");
@@ -54,6 +58,11 @@ namespace ChatAppLib.models
         public void AddMessage(Message message)
         {
             Messages.Add(message);
+        }
+
+        public override string ToString()
+        {
+            return $"Topic : {Title}";
         }
     }
 }

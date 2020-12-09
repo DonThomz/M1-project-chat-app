@@ -3,7 +3,9 @@ using System.Net;
 using System.Net.Sockets;
 using ChatAppLib.models;
 using ChatAppLib.models.communication;
+using Client.Manager;
 using static ChatAppLib.models.communication.Command;
+using static Client.Utils.Choice;
 
 namespace Client
 {
@@ -12,36 +14,28 @@ namespace Client
         private const int PORT = 4000;
         private const string HOSTNAME = "localhost";
 
-        private TcpClient _client;
-        private NetworkStream _stream;
-        private int _portId;
-
-        private ResponseListener _responseListener;
-        private State _state;
-
-        public TcpClient Client => _client;
-
-        public NetworkStream Stream => _stream;
-
-        public int PortId => _portId;
-
-        public State State => _state;
-        
-        // Event 
-        public event EventHandler<ClientManager> CloseConnectionEvent;
-        
         // Manager 
         public static MessageManager MessageManager = new MessageManager();
+
+        private ResponseListener _responseListener;
 
 
         public ClientManager()
         {
-            _state = State.DISCONNECTED;
+            State = State.DISCONNECTED;
         }
+
+        public TcpClient Client { get; private set; }
+
+        public NetworkStream Stream { get; private set; }
+
+        public int PortId { get; private set; }
+
+        public State State { get; private set; }
 
         public void ConnectionToServer()
         {
-            while (_state == State.DISCONNECTED)
+            while (State == State.DISCONNECTED)
             {
                 Console.WriteLine("Please, press any key to connect to the server {0}:{1}", HOSTNAME, PORT);
                 Console.ReadLine();
@@ -49,18 +43,18 @@ namespace Client
                 {
                     // setup connection client-server
                     Console.WriteLine("Connection...");
-                    _client = new TcpClient(HOSTNAME, PORT);
-                    _portId = ((IPEndPoint) _client.Client.LocalEndPoint).Port;
-                    _stream = _client.GetStream();
-                    _state = State.CONNECTED;
+                    Client = new TcpClient(HOSTNAME, PORT);
+                    PortId = ((IPEndPoint) Client.Client.LocalEndPoint).Port;
+                    Stream = Client.GetStream();
+                    State = State.CONNECTED;
                     Console.WriteLine("Connected !");
                     // setup connection client-server
-                    
+
                     // launch response listener
                     LaunchResponseListener();
-                    
+
                     // ask user to send request
-                    SendRequest();
+                    StartMenu();
                 }
                 catch (SocketException)
                 {
@@ -68,59 +62,73 @@ namespace Client
                 }
             }
         }
-        
+
         /// <summary>
-        /// Display action menu and send request to the server
+        ///     Display action menu and send request to the server
         /// </summary>
-        private void SendRequest()
+        private void StartMenu()
         {
-            while (_state != State.DISCONNECTED)
+            while (State != State.DISCONNECTED)
             {
                 // ask a user choice
                 var inputChoice = AskForAction();
-                
+
+                if (inputChoice.Equals("0")) break;
                 // create the corresponding request
-                var request = RetrieveRequest(inputChoice);
-                if (request == null) break;
-                try
-                {
-                    // send request to the server
-                    var serializeRequest = Request.Serialize(request);
-                    _stream.Write(serializeRequest, 0, serializeRequest.Length);
-                    _stream.Flush();
-                    Console.WriteLine("request send to the server");
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine("Error sending message {0} ", e.Message);
-                    _state = State.DISCONNECTED;
-                }
+                RetrieveRequest(inputChoice);
+                Console.ReadKey();
             }
+
+            Console.WriteLine("Bye bye, see you later alligator !");
+            Close();
         }
 
         /// <summary>
-        /// Retrieve the request compared to the choice
+        ///     Retrieve the request compared to the choice
         /// </summary>
         /// <param name="choice">user action choice by the user in the menu</param>
-        /// <returns>The request will be send to the server</returns>
-        private Request RetrieveRequest(string choice)
+        /// TODO use the username
+        private void RetrieveRequest(string choice)
         {
+            Request request = null;
             switch (choice)
             {
-                case "1":
-                    // TODO use the username 
-                    return MessageManager.SendPrivateMessage(_portId.ToString());
+                case ChoicePrivateMessage:
+                    request = MessageManager.SendPrivateMessage(PortId.ToString());
                     break;
-                case "2":
-                    return null;
+                case ChoiceShowPrivateMessage:
+                    Views.DisplayPrivateMessage(MessageManager.MyPrivateMessages);
                     break;
-                default:
-                    return null;
+                case ChoiceCreateTopic:
+                    request = TopicManager.CreateTopic(PortId.ToString());
+                    break;
+                case ChoiceListTopics:
+                    request = TopicManager.ListTopics();
+                    break;
+            }
+
+            if (request != null) SendRequest(request);
+        }
+
+        private void SendRequest(Request request)
+        {
+            try
+            {
+                // send request to the server
+                var serializeRequest = Request.Serialize(request);
+                Stream.Write(serializeRequest, 0, serializeRequest.Length);
+                Stream.Flush();
+                Console.WriteLine("\nrequest send to the server, tape to continue...");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error sending message {0} ", e.Message);
+                State = State.DISCONNECTED;
             }
         }
 
         /// <summary>
-        /// Launch a thread which listen response from the server
+        ///     Launch a thread which listen response from the server
         /// </summary>
         private void LaunchResponseListener()
         {
@@ -134,11 +142,12 @@ namespace Client
         {
             // Display Menu
             Views.DisplayMenu();
+            Console.Write("What do you want to do ? Type a number : ");
             return Console.ReadLine();
         }
-        
+
         /// <summary>
-        /// Retrieve response receive from the respond listener
+        ///     Retrieve response receive from the respond listener
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="response"></param>
@@ -146,11 +155,20 @@ namespace Client
         {
             switch (response.Type)
             {
-                case PRIVATE_MESSAGE:
-                    Console.WriteLine(((PrivateMessage) response.Body).Content);
+                case Command.PrivateMessage:
                     MessageManager.SaveMessage((PrivateMessage) response.Body);
                     break;
+                case ListTopics:
+                    Views.DisplayListTopics(response);
+                    break;
             }
+        }
+
+        public void Close()
+        {
+            Console.WriteLine("Closing connection...");
+            State = State.DISCONNECTED;
+            Client.Close();
         }
     }
 }

@@ -14,18 +14,7 @@ namespace Server
 {
     public class Receiver
     {
-        private static string _consoleName;
-        public int RemotePort { get; }
-        private State State { get; set; }
-        private NetworkStream Stream { get; }
-        private TcpClient Client { get; }
-
-        private Queue<Response> ResponseQueue;
-
-        /*
-         * Managers
-         */
-        public MessageManager MessageManager { get; }
+        private readonly string _consoleName;
 
         /**
          * Threads
@@ -34,13 +23,12 @@ namespace Server
 
         private Thread _sendingThread;
 
-        public event EventHandler<Receiver> CloseConnectionEvent;
+        private readonly Queue<Response> ResponseQueue;
 
         public Receiver(TcpClient client)
         {
             RemotePort = ((IPEndPoint) client.Client.RemoteEndPoint).Port;
             _consoleName = $"client {RemotePort.ToString()} >";
-
             State = State.CONNECTED;
             Client = client;
             Stream = client.GetStream();
@@ -49,11 +37,29 @@ namespace Server
             Client.SendBufferSize = 1024;
 
             MessageManager = new MessageManager();
+            TopicManager = new TopicManager();
             ResponseQueue = new Queue<Response>();
         }
 
+        public int RemotePort { get; }
+        private State State { get; set; }
+        private NetworkStream Stream { get; }
+        private TcpClient Client { get; }
+
+        /*
+         * Managers
+         */
+        public MessageManager MessageManager { get; }
+        public TopicManager TopicManager { get; }
+
+        public event EventHandler<Receiver> CloseConnectionEvent;
+
         public void Start()
         {
+            // add events
+            MessageManager.SendResponseMessageEvent += AddResponseToQueue;
+            TopicManager.SendResponseTopicEvent += AddResponseToQueue;
+
             // launch the request listener 
             _receivingThread = new Thread(ListeningRequest);
             _receivingThread.IsBackground = true;
@@ -71,45 +77,37 @@ namespace Server
         }
 
         /// <summary>
-        /// Method handles request coming from client
+        ///     Method handles request coming from client
         /// </summary>
         private void ListeningRequest()
         {
             LogMessage("start listen to client request ...");
             while (State != State.DISCONNECTED)
-            {
-                LogMessage("reading...");
                 try
                 {
                     var formatter = new BinaryFormatter();
                     var requestReceive = (Request) formatter.Deserialize(Stream);
-                    LogMessage(requestReceive);
+                    LogMessage($"Request receive : {requestReceive.Type}");
                     DispatchRequest(requestReceive);
                 }
                 catch (SerializationException serializationException)
                 {
                     LogMessage($"error during deserialization : {serializationException.Message}");
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
-                    LogMessage("connection lost, removing client...");
-                    State = State.DISCONNECTED;
-                    // invoke event to remove client manager from the list 
-                    CloseConnectionEvent?.Invoke(this, this);
+                    Close();
                 }
-            }
         }
 
         /// <summary>
-        /// Method to handle response that will be send to client
+        ///     Method to handle response that will be send to client
         /// </summary>
         private void SendingResponse()
         {
-            MessageManager.SendResponseMessageEvent += AddResponseToQueue;
             while (State != State.DISCONNECTED)
             {
                 if (ResponseQueue.Count > 0)
-                {
                     try
                     {
                         // get the response and remove it to the queue
@@ -124,7 +122,6 @@ namespace Server
                         LogMessage($"Error sending message {e.Message}");
                         State = State.DISCONNECTED;
                     }
-                }
 
                 Thread.Sleep(30);
             }
@@ -134,18 +131,30 @@ namespace Server
         {
             switch (request.Type)
             {
-                case PRIVATE_MESSAGE:
+                case Command.PrivateMessage:
                     MessageManager.HandlePrivateMessageSend(request);
                     break;
-                default:
+                case CreateTopic:
+                    TopicManager.CreateTopic(request);
+                    break;
+                case ListTopics:
+                    TopicManager.ListTopic(request);
                     break;
             }
         }
 
-        private static void LogMessage(object message)
+        private void LogMessage(object message)
         {
             Console.ForegroundColor = ConsoleColor.Blue;
             Console.WriteLine("{0} {1}", _consoleName, message);
+        }
+
+        private void Close()
+        {
+            LogMessage("connection lost, removing client...");
+            State = State.DISCONNECTED;
+            // invoke event to remove client manager from the list 
+            CloseConnectionEvent?.Invoke(this, this);
         }
     }
 }

@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using ChatAppLib.models;
 using ChatAppLib.models.communication;
-using static ChatAppLib.models.communication.Command;
-namespace Client
+
+namespace Client.Manager
 {
     /// <summary>
     /// <para/>Use to :
@@ -15,22 +15,19 @@ namespace Client
     /// </summary>
     public class MessageManager
     {
-
-        private List<PrivateMessage> _myPrivateMessages;
-
-        public List<PrivateMessage> MyPrivateMessages => _myPrivateMessages;
-
-        public void SaveMessage(PrivateMessage message)
-        {
-            _myPrivateMessages.Add(message);
-        }
-        
         public MessageManager()
         {
             // TODO use serialization to retrieve private messages 
-            _myPrivateMessages = new List<PrivateMessage>();
+            MyPrivateMessages = new List<PrivateMessage>();
         }
-        
+
+        public List<PrivateMessage> MyPrivateMessages { get; }
+
+        public void SaveMessage(PrivateMessage message)
+        {
+            MyPrivateMessages.Add(message);
+        }
+
         /// <summary>
         /// Create a request to send a private message to an user
         /// </summary>
@@ -47,7 +44,7 @@ namespace Client
             var messageObject = new PrivateMessage(senderUsername, receiverUsername, message);
 
             // return the request
-            return new Request(PRIVATE_MESSAGE, messageObject);
+            return new Request(Command.PrivateMessage, messageObject);
         }
 
         /// <summary>

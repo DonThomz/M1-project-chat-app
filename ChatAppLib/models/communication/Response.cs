@@ -37,7 +37,7 @@ namespace ChatAppLib.models.communication
         public string Type { get; set; }
 
         public object Body { get; set; }
-        
+
         public static byte[] Serialize(Response request)
         {
             using (var memoryStream = new MemoryStream())
