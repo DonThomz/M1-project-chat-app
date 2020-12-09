@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 
 namespace Server
 {
@@ -9,7 +10,7 @@ namespace Server
     {
         private const int Port = 4000;
         private static string _consoleName;
-        private static List<ClientManager> _clients = new List<ClientManager>();
+        public static readonly List<Receiver> Clients = new List<Receiver>();
         private bool _listening;
         private TcpListener _server;
 
@@ -25,7 +26,7 @@ namespace Server
                 LogMessage($"{_consoleName} start running...");
                 _server = new TcpListener(IPAddress.Any, Port);
                 _server.Start();
-                RunServer();
+                WaitForClients();
             }
             catch (SocketException e)
             {
@@ -34,9 +35,8 @@ namespace Server
             }
         }
 
-        private void RunServer()
+        private void WaitForClients()
         {
-            _clients = new List<ClientManager>();
             _listening = true;
 
             LogMessage($"{_consoleName} listening on port {Port.ToString()}");
@@ -45,18 +45,23 @@ namespace Server
                 LogMessage($"{_consoleName} wait for clients...");
                 // Wait util client connect to the server
                 var client = _server.AcceptTcpClient();
-                var clientManager = new ClientManager(client);
+                var clientManager = new Receiver(client);
 
                 // add method to remove client manager to the clients list
                 clientManager.CloseConnectionEvent += RemoveClient;
-                _clients.Add(clientManager);
-                LogMessage($"{_consoleName} client connected ! {_clients.Count.ToString()} connected");
+                Clients.Add(clientManager);
+
+                // Start the client managing in a thread
+                var clientThread = new Thread(clientManager.Start);
+                clientThread.Start();
+
+                LogMessage($"{_consoleName} client connected ! {Clients.Count.ToString()} connected");
             }
         }
 
-        private static void RemoveClient(object sender, ClientManager clientManager)
+        private static void RemoveClient(object sender, Receiver clientManager)
         {
-            _clients.Remove(clientManager);
+            Clients.Remove(clientManager);
             LogMessage($"{_consoleName} client {clientManager.RemotePort.ToString()} was removed");
         }
 

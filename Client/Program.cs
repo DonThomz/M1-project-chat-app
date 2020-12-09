@@ -4,7 +4,7 @@
     {
         private static void Main(string[] args)
         {
-            var client = new Client();
+            var client = new ClientManager();
             client.ConnectionToServer();
         }
     }

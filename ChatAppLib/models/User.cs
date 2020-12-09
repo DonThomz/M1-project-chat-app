@@ -2,6 +2,7 @@
 
 namespace ChatAppLib.models
 {
+    [Serializable]
     public class User
     {
         public User(string id, string username)
