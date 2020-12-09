@@ -1,36 +1,27 @@
 ﻿using System;
 
-namespace ChatAppLib
+namespace ChatAppLib.models
 {
-    public class Message
+    [Serializable]
+    public abstract class Message
     {
-        private string _id;
-        private string _senderUsername;
-        private string _receiverUsername;
-        
-        public string Id
+        private string _content;
+
+        public Message(string senderUsername, string content)
         {
-            get => _id;
-            set => _id = value;
+            Id = Guid.NewGuid().ToString("N");
+            SenderUsername = senderUsername;
+            _content = content;
         }
 
-        public string Sender
-        {
-            get => _senderUsername;
-            set => _senderUsername = value;
-        }
+        public string Id { get; }
 
-        public string Receiver
-        {
-            get => _receiverUsername;
-            set => _receiverUsername = value;
-        }
+        public string SenderUsername { get; }
 
-        public Message(string senderUsername, string receiverUsername)
+        public string Content
         {
-            _id = Guid.NewGuid().ToString("N");
-            _senderUsername = senderUsername;
-            _receiverUsername = receiverUsername;
+            get => _content;
+            set => _content = value;
         }
     }
 }

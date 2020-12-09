@@ -2,58 +2,73 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading.Tasks;
+using System.Threading;
 
 namespace Server
 {
     public class Server
     {
         private const int Port = 4000;
-
-        private TcpListener _server;
-        private static List<ClientManager> _clients = new List<ClientManager>();
+        private static string _consoleName;
+        public static readonly List<Receiver> Clients = new List<Receiver>();
         private bool _listening;
+        private TcpListener _server;
+
+        public Server(string consoleName)
+        {
+            _consoleName = $"{consoleName} >";
+        }
 
         public void Start()
         {
             try
             {
-                Console.WriteLine("server chat-app start running...");
+                LogMessage($"{_consoleName} start running...");
                 _server = new TcpListener(IPAddress.Any, Port);
                 _server.Start();
-                RunServer();
+                WaitForClients();
             }
             catch (SocketException e)
             {
-                Console.WriteLine("Error during server setup : {0}", e.Message);
-                Console.WriteLine("server chat-app stopping");
+                LogMessage($"{_consoleName} Error during server setup : {e.Message}");
+                LogMessage($"{_consoleName} stopping");
             }
         }
 
-        private void RunServer()
+        private void WaitForClients()
         {
-            _clients = new List<ClientManager>();
             _listening = true;
 
-            Console.WriteLine("server chat-app listening on port {0}", Port.ToString());
+            LogMessage($"{_consoleName} listening on port {Port.ToString()}");
             while (_listening)
             {
-                Console.WriteLine("wait for clients...");
+                LogMessage($"{_consoleName} wait for clients...");
                 // Wait util client connect to the server
                 var client = _server.AcceptTcpClient();
-                var clientManager = new ClientManager(client);
-                
+                var clientManager = new Receiver(client);
+
                 // add method to remove client manager to the clients list
                 clientManager.CloseConnectionEvent += RemoveClient;
-                _clients.Add(clientManager);
-                Console.WriteLine("client connected ! {0} connected", _clients.Count);
+                Clients.Add(clientManager);
+
+                // Start the client managing in a thread
+                var clientThread = new Thread(clientManager.Start);
+                clientThread.Start();
+
+                LogMessage($"{_consoleName} client connected ! {Clients.Count.ToString()} connected");
             }
         }
 
-        private static void RemoveClient(object sender, ClientManager clientManager)
+        private static void RemoveClient(object sender, Receiver clientManager)
         {
-            _clients.Remove(clientManager);
-            Console.WriteLine("client {0} was removed", clientManager.RemotePort.ToString());
+            Clients.Remove(clientManager);
+            LogMessage($"{_consoleName} client {clientManager.RemotePort.ToString()} was removed");
+        }
+
+        private static void LogMessage(string message)
+        {
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine(message);
         }
     }
 }
