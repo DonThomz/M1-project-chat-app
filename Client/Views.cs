@@ -31,6 +31,7 @@ namespace Client
 
             Console.WriteLine("+-----------------------+");
             Console.WriteLine("Tap any key to return to menu");
+            Console.ReadKey();
         }
 
         public static void DisplayListTopics(Response response)
@@ -40,6 +41,7 @@ namespace Client
             ((List<Topic>) response.Body).ForEach(Console.WriteLine);
             Console.WriteLine("+----------------------+");
             Console.WriteLine("Tap any key to return to menu");
+            Console.ReadKey();
         }
     }
 }

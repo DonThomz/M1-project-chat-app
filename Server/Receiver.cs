@@ -16,14 +16,14 @@ namespace Server
     {
         private readonly string _consoleName;
 
+        private readonly Queue<Response> ResponseQueue;
+
         /**
          * Threads
          */
         private Thread _receivingThread;
 
         private Thread _sendingThread;
-
-        private readonly Queue<Response> ResponseQueue;
 
         public Receiver(TcpClient client)
         {
@@ -82,10 +82,10 @@ namespace Server
         private void ListeningRequest()
         {
             LogMessage("start listen to client request ...");
+            var formatter = new BinaryFormatter();
             while (State != State.DISCONNECTED)
                 try
                 {
-                    var formatter = new BinaryFormatter();
                     var requestReceive = (Request) formatter.Deserialize(Stream);
                     LogMessage($"Request receive : {requestReceive.Type}");
                     DispatchRequest(requestReceive);
@@ -127,6 +127,10 @@ namespace Server
             }
         }
 
+        /// <summary>
+        ///     Dispatch request incoming to the correct action
+        /// </summary>
+        /// <param name="request">The request send by the user</param>
         private void DispatchRequest(Request request)
         {
             switch (request.Type)
@@ -138,7 +142,13 @@ namespace Server
                     TopicManager.CreateTopic(request);
                     break;
                 case ListTopics:
-                    TopicManager.ListTopic(request);
+                    TopicManager.ListTopic();
+                    break;
+                case JoinTopic:
+                    TopicManager.JoinTopic(request, RemotePort.ToString());
+                    break;
+                case MessageTopic:
+                    TopicManager.SendMessageInTopic(request);
                     break;
             }
         }

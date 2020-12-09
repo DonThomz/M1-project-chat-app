@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using ChatAppLib.models;
 using ChatAppLib.models.communication;
 using Client.Manager;
@@ -12,10 +13,14 @@ namespace Client
     public class ClientManager
     {
         private const int PORT = 4000;
+
         private const string HOSTNAME = "localhost";
 
         // Manager 
         public static MessageManager MessageManager = new MessageManager();
+        public static TopicManager TopicManager = new TopicManager();
+
+        private bool _isInTopic;
 
         private ResponseListener _responseListener;
 
@@ -50,6 +55,9 @@ namespace Client
                     Console.WriteLine("Connected !");
                     // setup connection client-server
 
+                    TopicManager.SendTopicMessageEvent += SendRequest;
+                    TopicManager.ChangeStateEvent += ChangeState;
+
                     // launch response listener
                     LaunchResponseListener();
 
@@ -68,16 +76,20 @@ namespace Client
         /// </summary>
         private void StartMenu()
         {
-            while (State != State.DISCONNECTED)
+            do
             {
+                if (State == State.IN_TOPIC) TopicManager.LaunchTopicRoom(PortId.ToString());
+                if (State != State.CONNECTED) continue;
                 // ask a user choice
                 var inputChoice = AskForAction();
 
-                if (inputChoice.Equals("0")) break;
+                if (inputChoice.Equals("0")) return;
+
                 // create the corresponding request
                 RetrieveRequest(inputChoice);
-                Console.ReadKey();
-            }
+                Thread.Sleep(300);
+            } while (State != State.DISCONNECTED);
+
 
             Console.WriteLine("Bye bye, see you later alligator !");
             Close();
@@ -105,20 +117,26 @@ namespace Client
                 case ChoiceListTopics:
                     request = TopicManager.ListTopics();
                     break;
+                case ChoiceJoinTopic:
+                    request = TopicManager.AskForJoinTopic();
+                    break;
             }
 
-            if (request != null) SendRequest(request);
+            if (request != null) SendRequest(this, request);
         }
 
-        private void SendRequest(Request request)
+        private void SendRequest(object sender, Request request)
         {
+            // Change the status to avoid new request incoming
+            State = State.WAITING_REPONSE;
             try
             {
                 // send request to the server
                 var serializeRequest = Request.Serialize(request);
                 Stream.Write(serializeRequest, 0, serializeRequest.Length);
                 Stream.Flush();
-                Console.WriteLine("\nrequest send to the server, tape to continue...");
+                if (request.Type != MessageTopic)
+                    Console.WriteLine("\nrequest send to the server, wait for response...");
             }
             catch (Exception e)
             {
@@ -126,6 +144,7 @@ namespace Client
                 State = State.DISCONNECTED;
             }
         }
+
 
         /// <summary>
         ///     Launch a thread which listen response from the server
@@ -151,15 +170,37 @@ namespace Client
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="response"></param>
-        private static void RetrieveResponse(object sender, Response response)
+        private void RetrieveResponse(object sender, Response response)
         {
+            if (response.CodeStatus != 200)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(response.Body);
+                Console.ForegroundColor = ConsoleColor.White;
+                State = State.CONNECTED;
+                return;
+            }
+
             switch (response.Type)
             {
                 case Command.PrivateMessage:
                     MessageManager.SaveMessage((PrivateMessage) response.Body);
+                    State = State.CONNECTED;
                     break;
                 case ListTopics:
                     Views.DisplayListTopics(response);
+                    State = State.CONNECTED;
+                    break;
+                case JoinTopic:
+                    //TopicManager.LaunchTopicRoom(response, PortId.ToString());
+                    _isInTopic = true;
+                    TopicManager.JoinTopic(response, PortId.ToString());
+                    break;
+                case MessageTopic:
+                    TopicManager.AddMessageReceive(response, PortId.ToString());
+                    break;
+                default:
+                    State = State.CONNECTED;
                     break;
             }
         }
@@ -169,6 +210,11 @@ namespace Client
             Console.WriteLine("Closing connection...");
             State = State.DISCONNECTED;
             Client.Close();
+        }
+
+        private void ChangeState(object sender, State state)
+        {
+            State = state;
         }
     }
 }
