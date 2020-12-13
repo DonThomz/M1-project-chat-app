@@ -43,5 +43,15 @@ namespace Client
             Console.WriteLine("Tap any key to return to menu");
             Console.ReadKey();
         }
+
+        public static void DisplayAuthMenu()
+        {
+            Console.Clear();
+            Console.WriteLine("+--------Chat App--------+\n" +
+                              "1 - Login\n" +
+                              "2 - Register\n" +
+                              "0 - Exit\n" +
+                              "+------------------------+\n");
+        }
     }
 }

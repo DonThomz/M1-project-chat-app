@@ -1,8 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
+using ChatAppLib.models;
 
 namespace Server
 {
@@ -11,6 +17,7 @@ namespace Server
         private const int Port = 4000;
         private static string _consoleName;
         public static readonly List<Receiver> Clients = new List<Receiver>();
+        public static readonly List<User> Users = new List<User>();
         private bool _listening;
         private TcpListener _server;
 
@@ -26,6 +33,7 @@ namespace Server
                 LogMessage($"{_consoleName} start running...");
                 _server = new TcpListener(IPAddress.Any, Port);
                 _server.Start();
+                InitUser();
                 WaitForClients();
             }
             catch (SocketException e)
@@ -69,6 +77,31 @@ namespace Server
         {
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine(message);
+        }
+
+        public static void InitUser()
+        {
+            var runDir = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+            var myFiles = Directory.GetFiles(runDir, "*.*", SearchOption.AllDirectories)
+                .Where(file => new string[] {".dat"}
+                    .Contains(Path.GetExtension(file)))
+                .ToList();
+            var formatter = new BinaryFormatter();
+            foreach (var file in myFiles)
+            {
+                using var streamReader = new StreamReader(file);
+                User obj;
+                try
+                {
+                    obj = (User) formatter.Deserialize(streamReader.BaseStream);
+                    Console.WriteLine(obj.Username);
+                    Users.Add(obj);
+                }
+                catch (SerializationException ex)
+                {
+                    throw new SerializationException(((object) ex).ToString() + "\n" + ex.Source);
+                }
+            }
         }
     }
 }

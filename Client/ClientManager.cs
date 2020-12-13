@@ -19,11 +19,13 @@ namespace Client
         // Manager 
         public static MessageManager MessageManager = new MessageManager();
         public static TopicManager TopicManager = new TopicManager();
+        public static AuthManager AuthManager = new AuthManager();
 
         private bool _isInTopic;
 
         private ResponseListener _responseListener;
-
+        private User _user;
+        private bool _connected = false;
 
         public ClientManager()
         {
@@ -78,12 +80,22 @@ namespace Client
         {
             do
             {
-                if (State == State.IN_TOPIC) TopicManager.LaunchTopicRoom(PortId.ToString());
+                Console.WriteLine(State.ToString());
+               
+                if (State == State.IN_TOPIC) TopicManager.LaunchTopicRoom(_user.Username);
                 if (State != State.CONNECTED) continue;
-                // ask a user choice
-                var inputChoice = AskForAction();
+                var inputChoice = "";
+                if (_connected)
+                {
+                    // ask a user choice
+                    inputChoice = AskForAction();
+                }
+                else
+                {
+                    inputChoice = AuthMenu();
+                }
 
-                if (inputChoice.Equals("0")) return;
+                if (inputChoice.Equals("0")) break;
 
                 // create the corresponding request
                 RetrieveRequest(inputChoice);
@@ -103,23 +115,38 @@ namespace Client
         private void RetrieveRequest(string choice)
         {
             Request request = null;
-            switch (choice)
+            if (_connected)
             {
-                case ChoicePrivateMessage:
-                    request = MessageManager.SendPrivateMessage(PortId.ToString());
-                    break;
-                case ChoiceShowPrivateMessage:
-                    Views.DisplayPrivateMessage(MessageManager.MyPrivateMessages);
-                    break;
-                case ChoiceCreateTopic:
-                    request = TopicManager.CreateTopic(PortId.ToString());
-                    break;
-                case ChoiceListTopics:
-                    request = TopicManager.ListTopics();
-                    break;
-                case ChoiceJoinTopic:
-                    request = TopicManager.AskForJoinTopic();
-                    break;
+                switch (choice)
+                {
+                    case ChoicePrivateMessage:
+                        request = MessageManager.SendPrivateMessage(_user.Username);
+                        break;
+                    case ChoiceShowPrivateMessage:
+                        Views.DisplayPrivateMessage(MessageManager.MyPrivateMessages);
+                        break;
+                    case ChoiceCreateTopic:
+                        request = TopicManager.CreateTopic(_user.Username);
+                        break;
+                    case ChoiceListTopics:
+                        request = TopicManager.ListTopics();
+                        break;
+                    case ChoiceJoinTopic:
+                        request = TopicManager.AskForJoinTopic();
+                        break;
+                }
+            }
+            else
+            {
+                switch (choice)
+                {
+                    case "1":
+                        request = AuthManager.Login();
+                        break;
+                    case "2":
+                        request = AuthManager.Register();
+                        break;
+                }
             }
 
             if (request != null) SendRequest(this, request);
@@ -165,6 +192,14 @@ namespace Client
             return Console.ReadLine();
         }
 
+        private static string AuthMenu()
+        {
+            // Display Menu
+            Views.DisplayAuthMenu();
+            Console.Write("What do you want to do ? Type a number : ");
+            return Console.ReadLine();
+        }
+
         /// <summary>
         ///     Retrieve response receive from the respond listener
         /// </summary>
@@ -177,12 +212,24 @@ namespace Client
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine(response.Body);
                 Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine("Tape a key to continue");
+                Console.ReadKey();
                 State = State.CONNECTED;
                 return;
             }
 
             switch (response.Type)
             {
+                case Command.Login:
+                    _user = (User) response.Body;
+                    _connected = true;
+                    State = State.CONNECTED;
+                    break;
+                case Command.Register:
+                    _user = (User) response.Body;
+                    _connected = true;
+                    State = State.CONNECTED;
+                    break;
                 case Command.PrivateMessage:
                     MessageManager.SaveMessage((PrivateMessage) response.Body);
                     State = State.CONNECTED;
@@ -192,12 +239,11 @@ namespace Client
                     State = State.CONNECTED;
                     break;
                 case JoinTopic:
-                    //TopicManager.LaunchTopicRoom(response, PortId.ToString());
                     _isInTopic = true;
-                    TopicManager.JoinTopic(response, PortId.ToString());
+                    TopicManager.JoinTopic(response, _user.Username);
                     break;
                 case MessageTopic:
-                    TopicManager.AddMessageReceive(response, PortId.ToString());
+                    TopicManager.AddMessageReceive(response, _user.Username);
                     break;
                 default:
                     State = State.CONNECTED;
@@ -208,6 +254,8 @@ namespace Client
         public void Close()
         {
             Console.WriteLine("Closing connection...");
+            _user = null;
+            _connected = false;
             State = State.DISCONNECTED;
             Client.Close();
         }

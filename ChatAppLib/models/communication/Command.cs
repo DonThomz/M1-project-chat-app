@@ -8,5 +8,7 @@
         public const string JoinTopic = "join-topic";
         public const string CreateTopic = "create-topic";
         public const string ListTopics = "list-topics";
+        public const string Login = "login";
+        public const string Register = "register";
     }
 }

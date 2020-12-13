@@ -65,6 +65,7 @@ namespace Client.Manager
         public void JoinTopic(Response response, string userId)
         {
             CurrentTopic = (Topic) response.Body;
+            Console.WriteLine(CurrentTopic);
             if (CurrentTopic == null)
             {
                 Console.WriteLine("Sorry topic not found :(");
@@ -79,6 +80,7 @@ namespace Client.Manager
 
         public void LaunchTopicRoom(string userId)
         {
+            
             Request request;
             string message;
             var exist = false;

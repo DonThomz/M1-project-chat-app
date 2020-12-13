@@ -1,4 +1,12 @@
-﻿namespace Server
+﻿using System;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
+using ChatAppLib.models;
+
+namespace Server
 {
     internal class Program
     {

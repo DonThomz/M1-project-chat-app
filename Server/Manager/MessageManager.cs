@@ -21,8 +21,13 @@ namespace Server.Manager
             try
             {
                 // Find the receiver in the list of client available
-                var receiver =
-                    Server.Clients.Find(c => c.RemotePort.ToString().Equals(privateMessage.ReceiverUsername));
+                var receiver = Server.Clients.Find(c => c.AuthManager.CurrentUser.Username.Equals(privateMessage.ReceiverUsername));
+                if (receiver == null)
+                {
+                    SendResponseMessageEvent?.Invoke(this, new Response(404, request.Type, "user not found"));
+                    return;
+                }
+                
                 // Send response to receiver if exit
                 receiver?.MessageManager.SendResponseMessageEvent?.Invoke(this,
                     new Response(200, request.Type, request.Body));

@@ -38,6 +38,7 @@ namespace Server
 
             MessageManager = new MessageManager();
             TopicManager = new TopicManager();
+            AuthManager = new AuthManager();
             ResponseQueue = new Queue<Response>();
         }
 
@@ -45,13 +46,16 @@ namespace Server
         private State State { get; set; }
         private NetworkStream Stream { get; }
         private TcpClient Client { get; }
-
+        
         /*
          * Managers
          */
         public MessageManager MessageManager { get; }
         public TopicManager TopicManager { get; }
 
+        public AuthManager AuthManager { get; }
+        
+        
         public event EventHandler<Receiver> CloseConnectionEvent;
 
         public void Start()
@@ -59,6 +63,7 @@ namespace Server
             // add events
             MessageManager.SendResponseMessageEvent += AddResponseToQueue;
             TopicManager.SendResponseTopicEvent += AddResponseToQueue;
+            AuthManager.SendResponseAuthEvent += AddResponseToQueue;
 
             // launch the request listener 
             _receivingThread = new Thread(ListeningRequest);
@@ -94,7 +99,7 @@ namespace Server
                 {
                     LogMessage($"error during deserialization : {serializationException.Message}");
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
                     Close();
                 }
@@ -135,6 +140,12 @@ namespace Server
         {
             switch (request.Type)
             {
+                case Command.Login:
+                    AuthManager.HandleLogin(request);
+                    break;
+                case Command.Register:
+                    AuthManager.HandleRegister(request);
+                    break;
                 case Command.PrivateMessage:
                     MessageManager.HandlePrivateMessageSend(request);
                     break;
@@ -145,7 +156,7 @@ namespace Server
                     TopicManager.ListTopic();
                     break;
                 case JoinTopic:
-                    TopicManager.JoinTopic(request, RemotePort.ToString());
+                    TopicManager.JoinTopic(request, AuthManager.CurrentUser.Username);
                     break;
                 case MessageTopic:
                     TopicManager.SendMessageInTopic(request);

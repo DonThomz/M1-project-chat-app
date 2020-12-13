@@ -65,7 +65,7 @@ namespace Server.Manager
             }
             else
             {
-                topic?.Members.Add(new User(userId, userId));
+                topic?.Members.Add(new User(userId));
                 // send the response with the topic
                 var response = new Response(200, Command.JoinTopic, topic);
                 SendResponseTopicEvent?.Invoke(this, response);
@@ -85,10 +85,8 @@ namespace Server.Manager
             {
                 if (!topicMessage.SenderUsername.Equals("server")) topic.Messages.Add(topicMessage);
                 Console.WriteLine("Message add !");
-                Console.WriteLine("size : " + Server.Clients
-                    .FindAll(r => topic.Members.Exists(u => u.Username == r.RemotePort.ToString())).Count);
                 // send responses back 
-                Server.Clients.FindAll(r => topic.Members.Exists(u => u.Username == r.RemotePort.ToString()))
+                Server.Clients.FindAll(r => topic.Members.Exists(u => u.Username == r.AuthManager.CurrentUser.Username))
                     .ForEach(r =>
                     {
                         var response = new Response(200, MessageTopic, topicMessage);
