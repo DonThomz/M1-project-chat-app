@@ -31,13 +31,6 @@ namespace Server.Manager
             TopicsMap.TryAdd(topic.Title, topic);
             var response = new Response(200, Command.CreateTopic, topic);
             SendResponseTopicEvent?.Invoke(this, response);
-            /*lock (Topics)
-            {
-                Topics.Add(topic);
-                // Send response with the topic
-                var response = new Response(200, Command.CreateTopic, topic);
-                SendResponseTopicEvent?.Invoke(this, response);
-            }*/
         }
 
         /// <summary>
@@ -65,7 +58,7 @@ namespace Server.Manager
             }
             else
             {
-                topic?.Members.Add(new User(userId));
+                topic.AddUser(userId);
                 // send the response with the topic
                 var response = new Response(200, Command.JoinTopic, topic);
                 SendResponseTopicEvent?.Invoke(this, response);
@@ -84,13 +77,37 @@ namespace Server.Manager
             lock (topic.Messages)
             {
                 if (!topicMessage.SenderUsername.Equals("server")) topic.Messages.Add(topicMessage);
-                Console.WriteLine("Message add !");
                 // send responses back 
-                Server.Clients.FindAll(r => topic.Members.Exists(u => u.Username == r.AuthManager.CurrentUser.Username))
+                Server.Clients.FindAll(r => topic.Members.Contains(r.AuthManager.CurrentUser.Username))
                     .ForEach(r =>
                     {
                         var response = new Response(200, MessageTopic, topicMessage);
-                        r.TopicManager.SendResponseTopicEvent(this, response);
+                        r.TopicManager.SendResponseTopicEvent?.Invoke(this, response);
+                    });
+            }
+        }
+
+        /// <summary>
+        /// Remove user from a topic
+        /// 1 - remove user from topic user list
+        /// 2 - send server message to all chatters to say that user left the topic
+        /// </summary>
+        /// <param name="request"></param>
+        public void RemoveUserFromTopic(Request request)
+        {
+            var topicMessage = (TopicMessage) request.Body;
+            TopicsMap.TryGetValue(topicMessage.TopicId, out var topic);
+            if (topic == null) return;
+            lock (topic.Messages)
+            {
+                if(!topicMessage.SenderUsername.Equals("server")) topic.RemoveUser(topicMessage.SenderUsername);
+                // send responses back 
+                Server.Clients.FindAll(r => topic.Members.Contains(r.AuthManager.CurrentUser.Username))
+                    .ForEach(r =>
+                    {
+                        var message = new TopicMessage("server", $"User {topicMessage.SenderUsername} left the topic", topic.Title);
+                        var response = new Response(200, LeaveTopic, message);
+                        r.TopicManager.SendResponseTopicEvent?.Invoke(this, response);
                     });
             }
         }

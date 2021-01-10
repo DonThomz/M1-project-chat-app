@@ -98,6 +98,7 @@ namespace Server
                 catch (SerializationException serializationException)
                 {
                     LogMessage($"error during deserialization : {serializationException.Message}");
+                    Close();
                 }
                 catch (Exception e)
                 {
@@ -160,6 +161,9 @@ namespace Server
                     break;
                 case MessageTopic:
                     TopicManager.SendMessageInTopic(request);
+                    break;
+                case LeaveTopic:
+                    TopicManager.RemoveUserFromTopic(request);
                     break;
             }
         }

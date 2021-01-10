@@ -9,6 +9,7 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using ChatAppLib.models;
+using Server.Manager;
 
 namespace Server
 {
@@ -33,7 +34,7 @@ namespace Server
                 LogMessage($"{_consoleName} start running...");
                 _server = new TcpListener(IPAddress.Any, Port);
                 _server.Start();
-                InitUser();
+                AuthManager.InitUser(Users);
                 WaitForClients();
             }
             catch (SocketException e)
@@ -53,14 +54,14 @@ namespace Server
                 LogMessage($"{_consoleName} wait for clients...");
                 // Wait util client connect to the server
                 var client = _server.AcceptTcpClient();
-                var clientManager = new Receiver(client);
+                var receiver = new Receiver(client);
 
                 // add method to remove client manager to the clients list
-                clientManager.CloseConnectionEvent += RemoveClient;
-                Clients.Add(clientManager);
+                receiver.CloseConnectionEvent += RemoveClient;
+                Clients.Add(receiver);
 
                 // Start the client managing in a thread
-                var clientThread = new Thread(clientManager.Start);
+                var clientThread = new Thread(receiver.Start);
                 clientThread.Start();
 
                 LogMessage($"{_consoleName} client connected ! {Clients.Count.ToString()} connected");
@@ -79,29 +80,6 @@ namespace Server
             Console.WriteLine(message);
         }
 
-        public static void InitUser()
-        {
-            var runDir = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-            var myFiles = Directory.GetFiles(runDir, "*.*", SearchOption.AllDirectories)
-                .Where(file => new string[] {".dat"}
-                    .Contains(Path.GetExtension(file)))
-                .ToList();
-            var formatter = new BinaryFormatter();
-            foreach (var file in myFiles)
-            {
-                using var streamReader = new StreamReader(file);
-                User obj;
-                try
-                {
-                    obj = (User) formatter.Deserialize(streamReader.BaseStream);
-                    Console.WriteLine(obj.Username);
-                    Users.Add(obj);
-                }
-                catch (SerializationException ex)
-                {
-                    throw new SerializationException(((object) ex).ToString() + "\n" + ex.Source);
-                }
-            }
-        }
+       
     }
 }

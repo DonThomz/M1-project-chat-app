@@ -28,9 +28,6 @@ namespace Client.Manager
                 case 0:
                     Console.Write("Please give a name : ");
                     break;
-                case 1:
-                    Console.Write("Do you want to join directly ? (Y/n) :");
-                    break;
             }
         }
 
@@ -39,9 +36,7 @@ namespace Client.Manager
             DisplayInstructionToCreateTopic(0);
             var topicName = Console.ReadLine();
             DisplayInstructionToCreateTopic(1);
-            var joinDirectly = Console.ReadKey().KeyChar == 'Y';
             var newTopic = new Topic(topicName);
-            if (joinDirectly) newTopic.Members.Add(new User(userId, userId));
             return new Request(Command.CreateTopic, newTopic);
         }
 
@@ -129,7 +124,7 @@ namespace Client.Manager
                     error = true;
                 }
             } while (!error && !exist);
-
+            SendTopicMessageEvent?.Invoke(this, new Request(LeaveTopic, new TopicMessage(userId, "", CurrentTopic.Title)));
             OnChangeStateEvent(State.CONNECTED);
         }
 
@@ -139,6 +134,7 @@ namespace Client.Manager
             
             if (message.SenderUsername.Equals("server"))
             {
+                
                 Console.ForegroundColor = ConsoleColor.DarkGreen;
                 Console.WriteLine("{0} > {1}", message.SenderUsername, message.Content);
                 Console.ResetColor();

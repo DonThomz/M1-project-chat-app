@@ -27,7 +27,12 @@ namespace Client
             Console.WriteLine("+-List private messages-+");
 
             for (var i = 0; i < messages.Count; i++)
-                Console.WriteLine("{0} - message from {1}:\n{2}", i, messages[i].SenderUsername, messages[i].Content);
+            {
+                if (ClientManager.UserLogged.Username.Equals(messages[i].SenderUsername)) 
+                    Console.WriteLine("{0} - message send to {1}:\n{2}", i, messages[i].ReceiverUsername, messages[i].Content);
+                else Console.WriteLine("{0} - message from {1}:\n{2}", i, messages[i].SenderUsername, messages[i].Content);
+            }
+              
 
             Console.WriteLine("+-----------------------+");
             Console.WriteLine("Tap any key to return to menu");

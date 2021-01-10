@@ -14,11 +14,11 @@ namespace ChatAppLib.models
         {
             Id = Guid.NewGuid().ToString("N");
             Title = title;
-            Members = new List<User>();
+            Members = new HashSet<string>();
             Messages = new List<Message>();
         }
 
-        public Topic(string title, List<User> members)
+        public Topic(string title, HashSet<string> members)
         {
             Title = title;
             Members = members;
@@ -30,7 +30,7 @@ namespace ChatAppLib.models
             Title = title;
         }
 
-        public Topic(string id, string title, List<User> members)
+        public Topic(string id, string title, HashSet<string> members)
         {
             Id = id;
             Title = title;
@@ -38,7 +38,7 @@ namespace ChatAppLib.models
             Messages = new List<Message>();
         }
 
-        public Topic(string id, string title, List<User> members, List<Message> messages)
+        public Topic(string id, string title, HashSet<string> members, List<Message> messages)
         {
             Id = id;
             Title = title;
@@ -50,7 +50,7 @@ namespace ChatAppLib.models
 
         public string Title { get; set; }
 
-        public List<User> Members { get; set; }
+        public HashSet<string> Members { get; set; }
 
         public List<Message> Messages { get; set; }
 
@@ -59,6 +59,17 @@ namespace ChatAppLib.models
         {
             Messages.Add(message);
         }
+
+        public void AddUser(string userId)
+        {
+            Members.Add(userId);
+        }
+        
+        public void RemoveUser(string userId)
+        {
+            Members.RemoveWhere(u => u.Equals(userId));
+        }
+
 
         public override string ToString()
         {

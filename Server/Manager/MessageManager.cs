@@ -30,10 +30,10 @@ namespace Server.Manager
                 
                 // Send response to receiver if exit
                 receiver?.MessageManager.SendResponseMessageEvent?.Invoke(this,
-                    new Response(200, request.Type, request.Body));
+                    new Response(200, request.Type, privateMessage));
 
                 // Send response to sender
-                SendResponseMessageEvent?.Invoke(this, new Response(200, request.Type, request.Body));
+                SendResponseMessageEvent?.Invoke(this, new Response(200, request.Type, privateMessage));
 
                 Console.WriteLine("Message send to user {0}", privateMessage.ReceiverUsername);
             }

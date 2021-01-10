@@ -24,7 +24,7 @@ namespace Client
         private bool _isInTopic;
 
         private ResponseListener _responseListener;
-        private User _user;
+        public static User UserLogged;
         private bool _connected = false;
 
         public ClientManager()
@@ -78,11 +78,8 @@ namespace Client
         /// </summary>
         private void StartMenu()
         {
-            do
-            {
-                Console.WriteLine(State.ToString());
-               
-                if (State == State.IN_TOPIC) TopicManager.LaunchTopicRoom(_user.Username);
+            do {
+                if (State == State.IN_TOPIC) TopicManager.LaunchTopicRoom(UserLogged.Username);
                 if (State != State.CONNECTED) continue;
                 var inputChoice = "";
                 if (_connected)
@@ -120,13 +117,13 @@ namespace Client
                 switch (choice)
                 {
                     case ChoicePrivateMessage:
-                        request = MessageManager.SendPrivateMessage(_user.Username);
+                        request = MessageManager.SendPrivateMessage(UserLogged.Username);
                         break;
                     case ChoiceShowPrivateMessage:
                         Views.DisplayPrivateMessage(MessageManager.MyPrivateMessages);
                         break;
                     case ChoiceCreateTopic:
-                        request = TopicManager.CreateTopic(_user.Username);
+                        request = TopicManager.CreateTopic(UserLogged.Username);
                         break;
                     case ChoiceListTopics:
                         request = TopicManager.ListTopics();
@@ -152,6 +149,11 @@ namespace Client
             if (request != null) SendRequest(this, request);
         }
 
+        /// <summary>
+        /// Serialize request object and send into the tcp stream
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="request"></param>
         private void SendRequest(object sender, Request request)
         {
             // Change the status to avoid new request incoming
@@ -221,12 +223,12 @@ namespace Client
             switch (response.Type)
             {
                 case Command.Login:
-                    _user = (User) response.Body;
+                    UserLogged = (User) response.Body;
                     _connected = true;
                     State = State.CONNECTED;
                     break;
                 case Command.Register:
-                    _user = (User) response.Body;
+                    UserLogged = (User) response.Body;
                     _connected = true;
                     State = State.CONNECTED;
                     break;
@@ -240,10 +242,15 @@ namespace Client
                     break;
                 case JoinTopic:
                     _isInTopic = true;
-                    TopicManager.JoinTopic(response, _user.Username);
+                    TopicManager.JoinTopic(response, UserLogged.Username);
                     break;
                 case MessageTopic:
-                    TopicManager.AddMessageReceive(response, _user.Username);
+                    TopicManager.AddMessageReceive(response, UserLogged.Username);
+                    break;
+                case LeaveTopic:
+                    TopicManager.AddMessageReceive(response, UserLogged.Username);
+                    var message = (TopicMessage) response.Body;
+                    TopicManager.CurrentTopic.RemoveUser(message.SenderUsername);
                     break;
                 default:
                     State = State.CONNECTED;
@@ -251,10 +258,13 @@ namespace Client
             }
         }
 
+        /// <summary>
+        /// Close the tcp socket session
+        /// </summary>
         public void Close()
         {
             Console.WriteLine("Closing connection...");
-            _user = null;
+            UserLogged = null;
             _connected = false;
             State = State.DISCONNECTED;
             Client.Close();

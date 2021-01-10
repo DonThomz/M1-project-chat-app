@@ -12,6 +12,7 @@ namespace Server.Manager
 {
     public class AuthManager
     {
+        private const string PathUserFolder = "users/";
         public User CurrentUser { get; set; }
 
         // event to send a response to the user
@@ -52,6 +53,7 @@ namespace Server.Manager
         public void HandleRegister(Request request)
         {
             var newUser = (User) request.Body;
+            Console.WriteLine(newUser);
             try
             {
                 User user;
@@ -60,10 +62,11 @@ namespace Server.Manager
                     // Find user if exist
                     user = Server.Users.Find(u => u.Username.Equals(newUser.Username));
                 }
-
+                Console.WriteLine(newUser);
                 if (user == null)
                 {
-                    var fs = new FileStream(newUser.Id + ".dat", FileMode.Create);
+                    Console.WriteLine(newUser.Id);
+                    var fs = new FileStream(PathUserFolder + newUser.Id + ".dat", FileMode.Create);
                     BinaryFormatter formatter = new BinaryFormatter();
                     try
                     {
@@ -83,7 +86,7 @@ namespace Server.Manager
                         SendResponseAuthEvent?.Invoke(this, new Response(200, request.Type,
                             newUser));
                     }
-                    catch (SerializationException e)
+                    catch (Exception e)
                     {
                         Console.WriteLine("Failed to serialize. Reason: " + e.Message);
                         SendResponseAuthEvent?.Invoke(this, new Response(400, request.Type,
@@ -105,6 +108,36 @@ namespace Server.Manager
                 SendResponseAuthEvent?.Invoke(this, new Response(400, request.Type,
                     "error server, please try again !"));
             }
+        }
+        
+        public static void InitUser(List<User> users)
+        {
+            var assembly = Assembly.GetEntryAssembly();
+            if (assembly == null) return;
+            var runDir = Path.GetDirectoryName(assembly.Location) + "/" + PathUserFolder;
+            var exists = System.IO.Directory.Exists(runDir);
+            if (!exists) System.IO.Directory.CreateDirectory(runDir);
+            var myFiles = Directory.GetFiles(runDir, "*.dat")
+                .Where(file => new string[] {".dat"}
+                    .Contains(Path.GetExtension(file)))
+                .ToList();
+            var formatter = new BinaryFormatter();
+            foreach (var file in myFiles)
+            {
+                using var streamReader = new StreamReader(file);
+                User obj;
+                try
+                {
+                    obj = (User) formatter.Deserialize(streamReader.BaseStream);
+                    Console.WriteLine(obj.Username);
+                    users.Add(obj);
+                }
+                catch (SerializationException ex)
+                {
+                    throw new SerializationException(((object) ex).ToString() + "\n" + ex.Source);
+                }
+            }
+
         }
     }
 }
